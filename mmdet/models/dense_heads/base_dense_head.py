@@ -571,6 +571,14 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
             det_bboxes, keep_idxs = batched_nms(results.bboxes, results.scores,
                                                 results.labels,
                                                 self.test_cfg.nms)
+            # Ensure indices are accepted by mmengine InstanceData across devices
+            try:
+                keep_idxs = keep_idxs.tolist()
+            except Exception:
+                try:
+                    keep_idxs = list(keep_idxs)
+                except Exception:
+                    pass
             results = results[keep_idxs]
             # some nms operation may reweight the score such as softnms
             results.scores = det_bboxes[:, -1]
