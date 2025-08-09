@@ -101,6 +101,20 @@ class DetInferencer(BaseInferencer):
         self.model = revert_sync_batchnorm(self.model)
         self.show_progress = show_progress
 
+        # Explicitly move model and data preprocessor to MPS when requested.
+        # Some upstream inferencer utilities may not fully handle 'mps' yet.
+        try:
+            import torch  # local import to avoid hard dependency
+            if isinstance(device, str) and device.lower().startswith('mps'):
+                target = torch.device('mps') if device.lower() == 'mps' else torch.device(device)
+                self.model.to(target)
+                if hasattr(self.model, 'data_preprocessor') and hasattr(self.model.data_preprocessor, 'device'):
+                    # Align data preprocessor device so inputs are moved correctly
+                    self.model.data_preprocessor.device = target
+        except Exception:
+            # Keep silent fallback if environment lacks MPS
+            pass
+
     def _load_weights_to_model(self, model: nn.Module,
                                checkpoint: Optional[dict],
                                cfg: Optional[ConfigType]) -> None:
