@@ -66,21 +66,21 @@ train-ytiny-20250709-taikoB-img80:
 	bash scripts/train_yolox_tiny.sh
 
 test-ytiny-20250709-taikoB-img2:
-	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_test.py \
+	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune_test.py \
 	MODEL=yolox_tiny \
-	DATASET=20250709_toshitaiko_seat-knockB_img2 \
+	DATASET=20250709_toshitaiko_seat-knockB_img2_finetune \
 	bash scripts/test_yolox_tiny.sh
 
 train-ytiny-20250709-taikoB-img2:
-	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_train.py \
+	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune.py \
 	MODEL=yolox_tiny \
-	DATASET=20250709_toshitaiko_seat-knockB_img2 \
+	DATASET=20250709_toshitaiko_seat-knockB_img2_finetune \
 	EPOCHS=${EPOCHS} \
 	bash scripts/train_yolox_tiny.sh
 
 # Generate splits via pipeline (images 80cls)
 splits-20250709-taikoB-img80:
-	python tools/misc/build_dataset_pipeline.py \
+	python tools/dataset_utils/build_dataset_pipeline.py \
 	  data/20250709_YokohamaStadium_ToshiTaiko_seat-knock_B_200/instances_default.json \
 	  data/20250709_YokohamaStadium_ToshiTaiko_seat-knock_B_200 \
 	  --variant images \
@@ -90,7 +90,7 @@ splits-20250709-taikoB-img80:
 
 # Generate splits via pipeline (images2 2cls)
 splits-20250709-taikoB-img2:
-	python tools/misc/build_dataset_pipeline.py \
+	python tools/dataset_utils/build_dataset_pipeline.py \
 	  data/20250709_YokohamaStadium_ToshiTaiko_seat-knock_B_200/instances_default.json \
 	  data/20250709_YokohamaStadium_ToshiTaiko_seat-knock_B_200 \
 	  --variant images \
@@ -101,8 +101,8 @@ splits-20250709-taikoB-img2:
 
 # Test with the latest produced checkpoint for 2cls
 test-ytiny-20250709-taikoB-img2-last:
-	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_test.py \
+	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune_test.py \
 	MODEL=yolox_tiny \
-	DATASET=20250709_toshitaiko_seat-knockB_img2 \
-	WEIGHTS=$$(ls -t output/train/20250709_toshitaiko_seat-knockB_img2/yolox_tiny/ytiny_20250709_toshitaiko_seat-knockB_img2_train/*/*/epoch_*.pth | head -n1) \
+	DATASET=20250709_toshitaiko_seat-knockB_img2_finetune \
+	WEIGHTS=$$(ls -t output/train/20250709_toshitaiko_seat-knockB_img2_finetune/yolox_tiny/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune/*/*/epoch_*.pth 2>/dev/null | head -n1) \
 	bash scripts/test_yolox_tiny.sh
