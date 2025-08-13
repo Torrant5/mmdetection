@@ -102,12 +102,14 @@ def main():
         print()
     
     print("=" * 60)
-    print("Category ID fixing complete!")
+    print("[DEPRECATED SCRIPT] Category ID remapping complete!")
     print("\nNote: Backup files have been created with .backup_* extension")
     print("If you need to revert, simply rename the backup files.")
-    print("\nIMPORTANT: After this fix:")
-    print("  - person: category_id 1 (model class 0)")
-    print("  - sports ball: category_id 2 (model class 1)")
+    print("\nWARNING: This script changes COCO standard IDs:")
+    print("  - person: category_id 1 (COCO standard)")
+    print("  - sports ball: category_id 2 (changed from COCO standard 33)")
+    print("\nFor better transfer learning, COCO standard IDs (1, 33) should be preserved.")
+    print("Use verify_category_mapping.py to check current IDs instead.")
 
 
 if __name__ == "__main__":

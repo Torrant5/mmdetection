@@ -80,9 +80,9 @@ output/
 
 ### データセット処理（tools/dataset_utils/）
 - `build_dataset_pipeline.py`: データセット分割（COCO標準ID保持対応済み）
-- `fix_category_ids.py`: ID修正（2→33）
+- `fix_category_ids.py`: **[DEPRECATED]** ID変更（33→2）※使用非推奨、COCO標準IDを保持すべき
 - `fix_class_names.py`: クラス名修正（sports_ball→sports ball）
-- `verify_category_mapping.py`: マッピング検証
+- `verify_category_mapping.py`: マッピング検証（推奨）
 
 ### 重み転送（tools/misc/）
 - `transfer_coco_weights_to_2class.py`: 80クラス→2クラス重み転送

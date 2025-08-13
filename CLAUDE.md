@@ -199,8 +199,7 @@ CLEARML_FLAGS= make train-...
 2. **学習実行（tmux使用、ClearML有効）**
    ```bash
    # セッション作成と学習開始（ClearML有効）
-   tmux new-session -d -s "claude-yolox-ep15-2cls-clearml" \
-     -c /Users/kohei/ai/mmdetection
+   tmux new-session -d -s "claude-yolox-ep15-2cls-clearml"
    tmux send-keys -t "claude-yolox-ep15-2cls-clearml" \
      "source /opt/miniconda3/etc/profile.d/conda.sh && conda activate mmdet" C-m
    tmux send-keys -t "claude-yolox-ep15-2cls-clearml" \
@@ -209,7 +208,8 @@ CLEARML_FLAGS= make train-...
 
 3. **進捗確認**
    ```bash
-   tmux capture-pane -t "claude-train-*" -p | grep "Epoch"
+   # 特定のセッション名を指定（ワイルドカードは使用不可）
+   tmux capture-pane -t "claude-yolox-ep15-2cls-clearml" -p | grep "Epoch"
    ```
 
 4. **評価実行**
@@ -250,9 +250,9 @@ python tools/dataset_utils/verify_category_mapping.py
 
 ### tools/dataset_utils/ - データセット処理ツール
 - `build_dataset_pipeline.py` - データセット分割とアノテーション生成（COCO標準ID保持対応済み）
-- `fix_category_ids.py` - カテゴリIDをCOCO標準に修正
+- `fix_category_ids.py` - **[DEPRECATED]** カテゴリIDを連番化（33→2）※使用非推奨、COCO標準ID(1,33)を保持すべき
 - `fix_class_names.py` - クラス名を`sports ball`形式に修正
-- `verify_category_mapping.py` - カテゴリマッピングの検証
+- `verify_category_mapping.py` - カテゴリマッピングの検証（推奨）
 
 ## PRレビュー対応ガイドライン
 
