@@ -1,3 +1,8 @@
+"""
+Fine-tuning configuration for YOLOX-Tiny with 2 classes (person, sports ball).
+Optimized for small dataset with transferred weights from COCO.
+"""
+
 _base_ = './yolox_tiny_8xb8-300e_coco_clearml.py'
 
 # Use transferred weights from 80-class model (person and sports ball preserved)
@@ -17,11 +22,11 @@ classes = ('person','sports ball')
 
 img_scale = (3040, 3040)  # High resolution for small object detection
 
+# Minimal augmentation for fine-tuning (compatible with YOLOX pipeline)
 train_pipeline = [
-    # Reduced augmentation for fine-tuning
     dict(type='Mosaic', img_scale=img_scale, pad_val=114.0),
-    dict(type='RandomAffine', scaling_ratio_range=(0.5, 1.5), border=(-img_scale[0] // 2, -img_scale[1] // 2)),  # Reduced range
-    dict(type='MixUp', img_scale=img_scale, ratio_range=(0.8, 1.2), pad_val=114.0),  # Reduced range
+    dict(type='RandomAffine', scaling_ratio_range=(0.9, 1.1), border=(-img_scale[0] // 2, -img_scale[1] // 2)),
+    dict(type='MixUp', img_scale=img_scale, ratio_range=(1.0, 1.0), pad_val=114.0),
     dict(type='YOLOXHSVRandomAug'),
     dict(type='RandomFlip', prob=0.5),
     dict(type='Resize', scale=img_scale, keep_ratio=True),
@@ -38,6 +43,7 @@ test_pipeline = [
     dict(type='PackDetInputs', meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape', 'scale_factor')),
 ]
 
+# Dataset with MultiImageMixDataset wrapper (required for YOLOX)
 train_dataset = dict(
     type='MultiImageMixDataset',
     dataset=dict(
@@ -57,7 +63,7 @@ train_dataset = dict(
 )
 
 train_dataloader = dict(
-    batch_size=1,  # Reduced for high resolution
+    batch_size=1,  # Small batch size for high resolution
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -65,7 +71,7 @@ train_dataloader = dict(
 )
 
 val_dataloader = dict(
-    batch_size=1,  # Reduced for high resolution
+    batch_size=1,
     num_workers=4,
     persistent_workers=True,
     drop_last=False,
@@ -93,45 +99,99 @@ val_evaluator = dict(
 )
 test_evaluator = val_evaluator
 
-max_epochs = 20
-num_last_epochs = 15  # Disable strong augmentation for most epochs in fine-tuning
-interval = 5
-
+# Training configuration
+max_epochs = 30
 train_cfg = dict(
-    max_epochs=max_epochs, 
-    val_interval=1,  # Evaluate every epoch
-    val_begin=0  # Start validation from epoch 0 (before training)
+    type='EpochBasedTrainLoop',
+    max_epochs=max_epochs,
+    val_interval=1,  # Validate every epoch
 )
 
-# Lower learning rate for fine-tuning with transferred weights
-base_lr = 0.0001  # 1/100 of default for better preservation of transferred weights
+# Very conservative learning rate for fine-tuning
+base_lr = 0.00001  # 1/1000 of default YOLOX learning rate
 
+# Simple optimizer without complex weight decay settings
+optim_wrapper = dict(
+    type='OptimWrapper',
+    optimizer=dict(
+        type='SGD',
+        lr=base_lr,
+        momentum=0.9,
+        weight_decay=0.0001,  # Reduced weight decay
+        nesterov=True
+    ),
+    clip_grad=None  # No gradient clipping
+)
+
+# Gentle learning rate schedule
 param_scheduler = [
-    dict(type='mmdet.QuadraticWarmupLR', by_epoch=True, begin=0, end=1, convert_to_iter_based=True),
-    dict(type='CosineAnnealingLR', eta_min=1e-4, begin=1, T_max=max_epochs - num_last_epochs,
-         end=max_epochs - num_last_epochs, by_epoch=True, convert_to_iter_based=True),
-    dict(type='ConstantLR', by_epoch=True, factor=1, begin=max_epochs - num_last_epochs, end=max_epochs),
+    # Constant learning rate for first 5 epochs
+    dict(
+        type='ConstantLR',
+        factor=1.0,
+        begin=0,
+        end=5,
+        by_epoch=True
+    ),
+    # Slow cosine decay
+    dict(
+        type='CosineAnnealingLR',
+        T_max=max_epochs - 5,
+        eta_min=base_lr * 0.1,
+        begin=5,
+        end=max_epochs,
+        by_epoch=True
+    )
 ]
 
-default_hooks = dict(checkpoint=dict(interval=interval, max_keep_ckpts=3))
-
-default_hooks.update(dict(
+# Hooks configuration
+default_hooks = dict(
+    timer=dict(type='IterTimerHook'),
+    logger=dict(type='LoggerHook', interval=10),
+    param_scheduler=dict(type='ParamSchedulerHook'),
+    checkpoint=dict(
+        type='CheckpointHook',
+        interval=1,
+        max_keep_ckpts=5,
+        save_best='coco/bbox_mAP',
+        rule='greater'
+    ),
+    sampler_seed=dict(type='DistSamplerSeedHook'),
     visualization=dict(
-        type='DetVisualizationHook', draw=True, interval=1, score_thr=0.3,
-        test_out_dir='vis_test')
-))
+        type='DetVisualizationHook',
+        draw=True,
+        interval=1,
+        score_thr=0.01,  # Low threshold to see all detections
+        test_out_dir='vis_test'
+    )
+)
 
-# Custom hooks for fine-tuning (override parent config)
+# Custom hooks for fine-tuning
 custom_hooks = [
+    # Disable Mosaic/MixUp from the beginning
     dict(
         type='YOLOXModeSwitchHook',
-        num_last_epochs=num_last_epochs,  # 15 epochs without strong augmentation
-        priority=48),
+        num_last_epochs=30,  # All epochs without Mosaic/MixUp
+        priority=48
+    ),
     dict(type='SyncNormHook', priority=48),
     dict(
         type='EMAHook',
         ema_type='ExpMomentumEMA',
-        momentum=0.0001,
+        momentum=0.0002,  # Slower EMA update
         update_buffers=True,
-        priority=49)
+        priority=49
+    )
 ]
+
+# Experiment name
+exp_name = 'yolox_tiny_2class_finetune'
+
+# Log level
+log_level = 'INFO'
+
+# Resume from checkpoint if exists
+resume = False
+
+# Disable automatic learning rate scaling
+auto_scale_lr = dict(enable=False)

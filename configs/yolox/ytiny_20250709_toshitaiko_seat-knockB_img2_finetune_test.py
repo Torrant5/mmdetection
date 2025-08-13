@@ -1,3 +1,7 @@
+"""
+Test configuration for fine-tuned YOLOX-Tiny with 2 classes.
+"""
+
 _base_ = './yolox_tiny_8xb8-300e_coco_clearml.py'
 
 dataset_type = 'CocoDataset'
@@ -52,8 +56,16 @@ val_evaluator = dict(
 
 test_evaluator = val_evaluator
 
+# Visualization hook for automatic image output
 default_hooks = dict(
     visualization=dict(
-        type='DetVisualizationHook', draw=True, interval=1, score_thr=0.3,
-        test_out_dir='vis_test')
+        type='DetVisualizationHook',
+        draw=True,
+        interval=1,
+        score_thr=0.01,
+        test_out_dir='vis_test'
+    )
 )
+
+# Experiment name
+exp_name = 'yolox_tiny_2class_finetune_test'
