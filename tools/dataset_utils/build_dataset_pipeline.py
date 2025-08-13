@@ -136,13 +136,17 @@ def write_split_annotations_and_materialize(
                 print(f'WARN: missing {src}')
                 missing += 1
                 continue
-            if os.path.lexists(dst):
-                if not os.path.exists(dst):
-                    try:
-                        dst.unlink()
-                    except Exception:
-                        pass
-                else:
+            # Check if destination already exists
+            if dst.exists():
+                # If it's a valid symlink or file pointing to the same source, skip
+                if dst.is_symlink():
+                    if dst.resolve() == src.resolve():
+                        ok += 1
+                        continue
+                    # Remove broken or different symlink
+                    dst.unlink()
+                elif dst.is_file():
+                    # Skip if it's already a regular file
                     ok += 1
                     continue
             if mode == 'symlink':
