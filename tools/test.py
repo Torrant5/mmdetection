@@ -57,6 +57,21 @@ def parse_args():
     # will pass the `--local-rank` parameter to `tools/train.py` instead
     # of `--local_rank`.
     parser.add_argument('--local_rank', '--local-rank', type=int, default=0)
+    # ClearML optional logging
+    parser.add_argument(
+        '--clearml',
+        action='store_true',
+        help='Enable ClearML logging (Task.init) if clearml is installed')
+    parser.add_argument(
+        '--clearml-project',
+        type=str,
+        default='mmdetection',
+        help='ClearML project name when --clearml is enabled')
+    parser.add_argument(
+        '--clearml-task',
+        type=str,
+        default=None,
+        help='ClearML task name when --clearml is enabled (default: config basename + "-test")')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -75,6 +90,48 @@ def main():
     cfg.launcher = args.launcher
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
+
+    # Initialize ClearML task if requested
+    if getattr(args, 'clearml', False):
+        try:
+            from clearml import Task  # type: ignore
+            cfg_base = osp.splitext(osp.basename(args.config))[0]
+            # Compose task name with dataset/model/tag if available
+            _dataset = os.environ.get('DATASET')
+            _model = os.environ.get('MODEL')
+            _tag = os.environ.get('TAG')
+            default_name = f"test:{cfg_base}"
+            parts = []
+            if _dataset: parts.append(_dataset)
+            if _model: parts.append(_model)
+            if _tag: parts.append(_tag)
+            if parts:
+                default_name = default_name + " [" + "/".join(parts) + "]"
+            task_name = args.clearml_task or default_name
+
+            task = Task.init(project_name=args.clearml_project, task_name=task_name, auto_connect_frameworks=True)
+            try:
+                from mmengine import Config as _Cfg
+                cfg_dict = cfg.to_dict() if isinstance(cfg, _Cfg) or hasattr(cfg, 'to_dict') else dict(cfg)
+            except Exception:
+                cfg_dict = dict()
+            try:
+                task.connect(cfg_dict)
+            except Exception:
+                pass
+            # Add helpful tags for filtering in ClearML
+            try:
+                tags = []
+                for key in ('STAGE', 'DATASET', 'MODEL', 'TAG', 'CONFIG_BASE', 'DEVICE'):
+                    v = os.environ.get(key)
+                    if v:
+                        tags.append(f"{key.lower()}:{v}")
+                if tags:
+                    task.add_tags(tags)
+            except Exception:
+                pass
+        except Exception as e:
+            print(f'[ClearML] Skipped initializing ClearML Task: {e}')
 
     # work_dir is determined in this priority: CLI > segment in file > filename
     if args.work_dir is not None:
