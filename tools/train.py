@@ -102,13 +102,34 @@ def main():
             from numpy import ndarray as np_ndarray  # type: ignore
             from numpy import dtype as np_dtype  # type: ignore
             allow.extend([np_reconstruct, np_ndarray, np_dtype])
+            
+            # Add numpy scalar support (needed for some checkpoints)
+            try:
+                from numpy._core.multiarray import scalar as np_scalar  # type: ignore
+                allow.append(np_scalar)
+            except ImportError:
+                try:
+                    from numpy.core.multiarray import scalar as np_scalar  # type: ignore
+                    allow.append(np_scalar)
+                except ImportError:
+                    pass
+            
             try:
                 from numpy.dtypes import Float64DType as np_Float64DType  # type: ignore
-                allow.append(np_Float64DType)
+                from numpy.dtypes import Int64DType as np_Int64DType  # type: ignore
+                allow.extend([np_Float64DType, np_Int64DType])
             except Exception:
                 pass
         except Exception:
             pass
+        # Add built-in functions that are commonly used in checkpoints
+        import builtins
+        allow.extend([
+            getattr,  # Required for loading some checkpoint formats
+            setattr,  # May be needed for some models
+            builtins.getattr,  # Explicit reference
+            builtins.setattr,  # Explicit reference
+        ])
         if hasattr(ts, 'add_safe_globals') and allow:
             ts.add_safe_globals(allow)  # type: ignore[attr-defined]
     except Exception as e:
