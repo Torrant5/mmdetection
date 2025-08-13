@@ -3,6 +3,18 @@
 ## プロジェクト概要
 mmdetectionを使用した物体検出モデルの学習・評価環境
 
+## リポジトリの独立性について
+**重要**: このリポジトリはmmdetectionのフォークですが、PRは本フォークリポジトリ内で完結させ、元のリポジトリ（open-mmlab/mmdetection）には影響を与えません。
+- すべての変更は本フォーク内でのみ管理
+- 独自の機能追加や改修は自由に実施可能
+- upstream（元リポジトリ）への貢献は別途検討
+
+## AGENTS.mdとの関係
+`.codex/AGENTS.md`は同僚との情報同期用のメモです。CLAUDE.mdとAGENTS.mdは常に同じ視座で開発できるよう、ほぼ同じ内容が記載されるべきものです。
+- CLAUDE.md: Claude Code Agent向けの詳細な説明
+- AGENTS.md: 同僚との共有用、両者で同じ認識を持つための同期ドキュメント
+- 重要な変更は両方のファイルに反映すること
+
 ## 環境設定
 - Python環境: conda環境 `mmdet` を使用
 - 活性化コマンド: `source /opt/miniconda3/etc/profile.d/conda.sh && conda activate mmdet`
