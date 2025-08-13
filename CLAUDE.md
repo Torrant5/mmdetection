@@ -261,8 +261,17 @@ PRレビューを受けた際は、以下の手順で対応すること：
 
 1. **全コメントの確認**
    - 全体的なPRコメントだけでなく、個別のラインコメントまで確認する
-   - `gh pr view <PR番号> --comments` で確認可能
-   - `gh api repos/<owner>/<repo>/pulls/<PR番号>/comments` でJSONフォーマットでも取得可能
+   - **ラインコメントの確認方法**：
+     ```bash
+     # 全体的なコメントとラインコメントを含めて表示
+     gh pr view <PR番号> --comments
+     
+     # ラインコメントをJSON形式で取得（詳細情報付き）
+     gh api repos/<owner>/<repo>/pulls/<PR番号>/comments --jq '.[] | {id: .id, path: .path, line: .line, body: .body}'
+     
+     # 特定ファイルへのコメントを検索
+     gh pr view <PR番号> --comments | grep -A10 "<ファイル名>"
+     ```
 
 2. **対応判断基準**
    - **技術的正確性の検証**: レビュワーの指摘が技術的に正しいか確認する
@@ -273,14 +282,55 @@ PRレビューを受けた際は、以下の手順で対応すること：
    - 修正した項目: 具体的な変更内容を記載
    - 修正しない項目: 技術的根拠を含めて理由を説明
 
-4. **特にmmdetection固有の注意点**
+4. **ラインコメントへの個別返信**
+   - **重要**: 全体的なPRコメントだけでなく、各ラインコメントに個別に返信する
+   - **返信方法**：
+     ```bash
+     # ラインコメントのIDを取得
+     gh api repos/<owner>/<repo>/pulls/<PR番号>/comments --jq '.[] | {id: .id, path: .path, line: .line}'
+     
+     # 特定のラインコメントに返信
+     gh api -X POST repos/<owner>/<repo>/pulls/<PR番号>/comments/<コメントID>/replies \
+       -f body="返信内容"
+     ```
+   - **返信のポイント**：
+     - 修正した場合: 「✅ 修正しました（コミット: <SHA>）」で始める
+     - 修正しない場合: 技術的根拠を明確に説明
+     - コード例を含める場合は適切なMarkdownフォーマットを使用
+
+5. **特にmmdetection固有の注意点**
    - **カテゴリID**: mmdetectionのCocoDatasetは連番である必要はなく、COCO標準ID（例: person=1, sports ball=33）をそのまま使用可能
    - **データ拡張**: ファインチューニング時のデータ拡張強度は、データセットサイズと学習目的により調整
    - **設定の継承**: ベース設定からの継承とオーバーライドの仕組みを理解した上で判断
+
+## PRレビュー対応の実例
+
+### ラインコメント対応例（PR #2より）
+```bash
+# 1. すべてのラインコメントを確認
+gh api repos/Torrant5/mmdetection/pulls/2/comments --jq '.[] | {id: .id, path: .path, line: .line}'
+
+# 2. 修正が必要なコメントに返信（例: fix_category_ids.py）
+gh api -X POST repos/Torrant5/mmdetection/pulls/2/comments/2272721219/replies \
+  -f body="✅ レビュワーの指摘が正しいです。修正しました（コミット: c8d07f67）
+
+mmdetectionのCocoDatasetは内部でcat2labelマッピングを使用し、COCO標準IDを自動的に連番インデックスに変換します。
+
+対応：
+1. スクリプトに[DEPRECATED]マーク追加
+2. COCO標準ID維持の重要性を明記"
+
+# 3. 修正不要なコメントに返信（例: MultiImageMixDataset）
+gh api -X POST repos/Torrant5/mmdetection/pulls/2/comments/2272721165/replies \
+  -f body="現状維持で問題ありません。
+
+MultiImageMixDatasetはYOLOXフレームワークの必須要件です。
+YOLOXModeSwitchHookと組み合わせることで、ファインチューニング時にMosaic/MixUpを適切に無効化できます。"
+```
 
 ## メモ
 - 学習時は必ずconda環境をアクティベートすること
 - 長時間の学習はtmuxセッションで実行し、外部から監視可能にすること
 - チェックポイントは3エポックごとに保存される（max_keep_ckpts=3）
 - 2クラス学習では必ずCOCO標準のカテゴリIDを使用すること
-- PRレビュー対応は、ラインコメントまで含めて完全に対応してから完了とすること
+- **PRレビュー対応は、ラインコメントまで含めて個別に返信してから完了とすること**
