@@ -79,13 +79,14 @@ def main():
         import torch
         ts = torch.serialization  # type: ignore[attr-defined]
         allow = []
+        # mmengine objects possibly stored in checkpoints
         try:
             from mmengine.logging.history_buffer import HistoryBuffer  # type: ignore
             allow.append(HistoryBuffer)
         except Exception:
             pass
-        # MessageHub module path differs between versions
         try:
+            # MessageHub module path differs between versions
             from mmengine.logging.message_hub import MessageHub  # type: ignore
             allow.append(MessageHub)
         except Exception:
@@ -94,6 +95,15 @@ def main():
                 allow.append(MessageHub)
             except Exception:
                 pass
+        # NumPy reconstruct helpers sometimes appear in pickled state
+        try:
+            import numpy as np  # noqa: F401
+            from numpy.core.multiarray import _reconstruct as np_reconstruct  # type: ignore
+            from numpy import ndarray as np_ndarray  # type: ignore
+            from numpy import dtype as np_dtype  # type: ignore
+            allow.extend([np_reconstruct, np_ndarray, np_dtype])
+        except Exception:
+            pass
         if hasattr(ts, 'add_safe_globals') and allow:
             ts.add_safe_globals(allow)  # type: ignore[attr-defined]
     except Exception as e:
