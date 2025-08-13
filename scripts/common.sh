@@ -13,6 +13,7 @@ CLEARML_FLAGS=${CLEARML_FLAGS:---clearml --clearml-project "${CLEARML_PROJECT}"}
 EXTRA_CFG_OPTIONS=${EXTRA_CFG_OPTIONS:-}
 
 # 既定の重みパス（2クラス転移済み）
+# NOTE: Generate with: python tools/misc/transfer_coco_weights_to_2class.py
 WEIGHTS=${WEIGHTS:-weights/yolox_tiny_2class_transferred_new.pth}
 
 # MPS/描画などの実行時環境（必要に応じて上書き可）

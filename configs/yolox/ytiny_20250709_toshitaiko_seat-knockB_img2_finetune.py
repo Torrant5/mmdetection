@@ -168,10 +168,10 @@ default_hooks = dict(
 
 # Custom hooks for fine-tuning
 custom_hooks = [
-    # Disable Mosaic/MixUp from the beginning
+    # Disable Mosaic/MixUp for all epochs (fine-tuning mode)
     dict(
         type='YOLOXModeSwitchHook',
-        num_last_epochs=30,  # All epochs without Mosaic/MixUp
+        num_last_epochs=max_epochs,  # Explicitly use max_epochs for clarity
         priority=48
     ),
     dict(type='SyncNormHook', priority=48),

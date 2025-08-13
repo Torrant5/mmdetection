@@ -20,7 +20,12 @@ def transfer_weights(src_checkpoint_path, dst_checkpoint_path):
     """
     # Load source checkpoint
     print(f"Loading checkpoint from {src_checkpoint_path}")
-    checkpoint = torch.load(src_checkpoint_path, map_location='cpu')
+    try:
+        # PyTorch 2.6+ recommends weights_only=True for security
+        checkpoint = torch.load(src_checkpoint_path, map_location='cpu', weights_only=True)
+    except TypeError:
+        # Fallback for older PyTorch versions
+        checkpoint = torch.load(src_checkpoint_path, map_location='cpu')
     
     state_dict = checkpoint['state_dict'] if 'state_dict' in checkpoint else checkpoint
     

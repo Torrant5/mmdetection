@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """
-Fix category IDs in 2-class COCO annotations to sequential IDs (1, 2).
-Changes sports ball from ID 33 to ID 2 for 2-class model compatibility.
+[DEPRECATED - DO NOT USE] This script incorrectly changes COCO standard IDs.
 
-This is necessary because:
-- Model outputs: class 0 (person), class 1 (sports_ball)
-- COCO evaluation expects: category_id = class_index + 1
-- So we need: person ID 1, sports_ball ID 2
+mmdetection's CocoDataset automatically handles the mapping:
+- COCO standard IDs: person=1, sports ball=33
+- Internal labels: person=0, sports ball=1 (via cat2label mapping)
+
+KEEP COCO STANDARD IDs for better transfer learning.
+This script is kept only for reference. Use verify_category_mapping.py instead.
 """
 
 import json
@@ -35,14 +36,16 @@ def fix_category_ids_to_sequential(json_path, backup=True):
         shutil.copy2(json_path, backup_path)
         print(f"  Created backup: {backup_path}")
     
-    # Fix category IDs: person=1, sports_ball=2
+    # WARNING: This incorrectly changes COCO standard IDs
+    # Should keep: person=1, sports ball=33
     category_mapping = {}
     for cat in data['categories']:
         if cat['name'] == 'sports ball' and cat['id'] == 33:
+            # WARNING: Should NOT change from 33
             old_id = cat['id']
-            cat['id'] = 2  # Sequential ID for 2-class model
+            cat['id'] = 2  # INCORRECT: Breaking COCO standard
             category_mapping[old_id] = 2
-            print(f"  Changed category ID: sports ball from {old_id} to 2")
+            print(f"  WARNING: Incorrectly changing sports ball from {old_id} to 2")
         elif cat['name'] == 'person' and cat['id'] != 1:
             old_id = cat['id']
             cat['id'] = 1

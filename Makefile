@@ -48,7 +48,7 @@ train-yolox-tiny-custom-images:
 	CONFIG=configs/yolox/yolox_tiny_custom_images_train.py \
 	MODEL=yolox_tiny \
 	DATASET=ys20250709_images \
-	EPOCHS=${EPOCHS} \
+	EPOCHS=$${EPOCHS:-20} \
 	bash scripts/train_yolox_tiny.sh
 
 # Short, self-descriptive targets (date/scene/modality/classes)
@@ -62,7 +62,7 @@ train-ytiny-20250709-taikoB-img80:
 	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img80_train.py \
 	MODEL=yolox_tiny \
 	DATASET=20250709_toshitaiko_seat-knockB_img80 \
-	EPOCHS=${EPOCHS} \
+	EPOCHS=$${EPOCHS:-20} \
 	bash scripts/train_yolox_tiny.sh
 
 test-ytiny-20250709-taikoB-img2:
@@ -75,7 +75,7 @@ train-ytiny-20250709-taikoB-img2:
 	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune.py \
 	MODEL=yolox_tiny \
 	DATASET=20250709_toshitaiko_seat-knockB_img2_finetune \
-	EPOCHS=${EPOCHS} \
+	EPOCHS=$${EPOCHS:-20} \
 	bash scripts/train_yolox_tiny.sh
 
 # Generate splits via pipeline (images 80cls)
@@ -101,8 +101,13 @@ splits-20250709-taikoB-img2:
 
 # Test with the latest produced checkpoint for 2cls
 test-ytiny-20250709-taikoB-img2-last:
+	@LATEST_CKPT=$$(ls -t output/train/20250709_toshitaiko_seat-knockB_img2_finetune/yolox_tiny/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune/*/*/epoch_*.pth 2>/dev/null | head -n1); \
+	if [ -z "$$LATEST_CKPT" ]; then \
+		echo "Error: No checkpoint files found in output/train/20250709_toshitaiko_seat-knockB_img2_finetune/"; \
+		exit 1; \
+	fi; \
 	CONFIG=configs/yolox/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune_test.py \
 	MODEL=yolox_tiny \
 	DATASET=20250709_toshitaiko_seat-knockB_img2_finetune \
-	WEIGHTS=$$(ls -t output/train/20250709_toshitaiko_seat-knockB_img2_finetune/yolox_tiny/ytiny_20250709_toshitaiko_seat-knockB_img2_finetune/*/*/epoch_*.pth 2>/dev/null | head -n1) \
+	WEIGHTS=$$LATEST_CKPT \
 	bash scripts/test_yolox_tiny.sh
