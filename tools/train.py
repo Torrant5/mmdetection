@@ -102,6 +102,11 @@ def main():
             from numpy import ndarray as np_ndarray  # type: ignore
             from numpy import dtype as np_dtype  # type: ignore
             allow.extend([np_reconstruct, np_ndarray, np_dtype])
+            try:
+                from numpy.dtypes import Float64DType as np_Float64DType  # type: ignore
+                allow.append(np_Float64DType)
+            except Exception:
+                pass
         except Exception:
             pass
         if hasattr(ts, 'add_safe_globals') and allow:
