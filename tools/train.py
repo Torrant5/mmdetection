@@ -157,9 +157,12 @@ def main():
             _tag = os.environ.get('TAG')
             default_name = f"train:{cfg_base}"
             parts = []
-            if _dataset: parts.append(_dataset)
-            if _model: parts.append(_model)
-            if _tag: parts.append(_tag)
+            if _dataset:
+                parts.append(_dataset)
+            if _model:
+                parts.append(_model)
+            if _tag:
+                parts.append(_tag)
             if parts:
                 default_name = default_name + " [" + "/".join(parts) + "]"
             task_name = args.clearml_task or default_name

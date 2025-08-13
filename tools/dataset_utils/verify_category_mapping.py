@@ -42,7 +42,7 @@ def verify_annotations(json_path):
         cat_id = ann['category_id']
         cat_counts[cat_id] = cat_counts.get(cat_id, 0) + 1
     
-    print(f"  Annotation counts by category ID:")
+    print("  Annotation counts by category ID:")
     for cat_id, count in sorted(cat_counts.items()):
         cat_name = next((c['name'] for c in data['categories'] if c['id'] == cat_id), 'unknown')
         print(f"    ID {cat_id} ({cat_name}): {count} annotations")

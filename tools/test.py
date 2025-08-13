@@ -164,9 +164,12 @@ def main():
             _tag = os.environ.get('TAG')
             default_name = f"test:{cfg_base}"
             parts = []
-            if _dataset: parts.append(_dataset)
-            if _model: parts.append(_model)
-            if _tag: parts.append(_tag)
+            if _dataset:
+                parts.append(_dataset)
+            if _model:
+                parts.append(_model)
+            if _tag:
+                parts.append(_tag)
             if parts:
                 default_name = default_name + " [" + "/".join(parts) + "]"
             task_name = args.clearml_task or default_name
@@ -201,7 +204,7 @@ def main():
         cfg.work_dir = args.work_dir
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
-        cfg.work_dir = osp.join('./work_dirs',
+        cfg.work_dir = osp.join('./output',
                                 osp.splitext(osp.basename(args.config))[0])
 
     cfg.load_from = args.checkpoint

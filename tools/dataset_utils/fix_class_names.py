@@ -36,7 +36,7 @@ def fix_class_names(json_path, backup=True):
         if cat['name'] == 'sports_ball':
             cat['name'] = 'sports ball'  # Change to space-separated
             fixed_count += 1
-            print(f"  Changed class name: 'sports_ball' -> 'sports ball'")
+            print("  Changed class name: 'sports_ball' -> 'sports ball'")
     
     # Save the modified JSON
     with open(json_path, 'w') as f:
@@ -45,7 +45,7 @@ def fix_class_names(json_path, backup=True):
     if fixed_count > 0:
         print(f"  Saved modified file: {json_path}")
     else:
-        print(f"  No changes needed")
+        print("  No changes needed")
     
     return fixed_count
 
