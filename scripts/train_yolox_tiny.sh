@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Activate conda environment if available
+if [ -f "/opt/miniconda3/etc/profile.d/conda.sh" ]; then
+    source /opt/miniconda3/etc/profile.d/conda.sh
+    conda activate mmdet 2>/dev/null || true
+fi
+
 DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 source "$DIR/common.sh"
 
@@ -27,12 +33,32 @@ fi
 AMP_FLAG=""
 if [[ "${USE_AMP}" == "1" ]]; then AMP_FLAG="--amp"; fi
 
+# Handle IMG_SCALE environment variable for resolution override
+if [[ -n "${IMG_SCALE:-}" ]]; then
+  # Adjust batch size based on resolution
+  if [[ "${IMG_SCALE}" -ge 3000 ]]; then
+    BATCH_SIZE=1
+  elif [[ "${IMG_SCALE}" -ge 2048 ]]; then
+    BATCH_SIZE=2
+  elif [[ "${IMG_SCALE}" -ge 1280 ]]; then
+    BATCH_SIZE=4
+  else
+    BATCH_SIZE=8
+  fi
+  
+  # Set batch sizes only - resolution will be set in config file
+  SCALE_OPTIONS="train_dataloader.batch_size=${BATCH_SIZE} "
+  SCALE_OPTIONS+="val_dataloader.batch_size=${BATCH_SIZE} "
+  
+  EXTRA_CFG_OPTIONS="${SCALE_OPTIONS} ${EXTRA_CFG_OPTIONS:-}"
+fi
+
 python tools/train.py "$CONFIG" \
   ${AMP_FLAG} \
   --work-dir "$WORKDIR" \
-  ${CLEARML_FLAGS} \
+  --clearml \
+  --clearml-project mmdetection \
   --cfg-options \
-    load_from="$WEIGHTS" \
     train_cfg.max_epochs="$EPOCHS" \
     default_hooks.checkpoint.interval=1 \
     ${EXTRA_CFG_OPTIONS:-}
@@ -53,9 +79,8 @@ mkdir -p .notes/py
   printf '  python tools/train.py "%s" \\\n' "$CONFIG"
   if [[ -n "$AMP_FLAG" ]]; then printf '    %s \\\n' "$AMP_FLAG"; fi
   printf '    --work-dir "%s" \\\n' "$WORKDIR"
-  if [[ -n "$CLEARML_FLAGS" ]]; then printf '    %s \\\n' "$CLEARML_FLAGS"; fi
+  printf '    --clearml --clearml-project mmdetection \\\n'
   printf '    --cfg-options \n'
-  printf '      load_from="%s" \\\n' "$WEIGHTS"
   printf '      train_cfg.max_epochs="%s" \\\n' "$EPOCHS"
   printf '      default_hooks.checkpoint.interval=1\n'
   if [[ -n "${EXTRA_CFG_OPTIONS:-}" ]]; then printf '      %s\n' "${EXTRA_CFG_OPTIONS}"; fi
@@ -76,7 +101,8 @@ fi
 if [[ -n "$CKPT" ]]; then
   POST_OUT="${RUN_OUTPUT_DIR}/results_posttrain.pkl"
   python tools/test.py "$CONFIG" "$CKPT" \
-    ${CLEARML_FLAGS} \
+    --clearml \
+    --clearml-project mmdetection \
     --out "$POST_OUT" || true
 
   # Images saved under work_dir/timestamp/vis_test by DetVisualizationHook

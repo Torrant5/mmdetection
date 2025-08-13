@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Activate conda environment if available
+if [ -f "/opt/miniconda3/etc/profile.d/conda.sh" ]; then
+    source /opt/miniconda3/etc/profile.d/conda.sh
+    conda activate mmdet 2>/dev/null || true
+fi
+
 DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 source "$DIR/common.sh"
 
@@ -18,7 +24,9 @@ mkdir -p "$RUN_OUTPUT_DIR"
 OUT=${OUT:-${RUN_OUTPUT_DIR}/results.pkl}
 
 python tools/test.py "$CONFIG" "$WEIGHTS" \
-  ${CLEARML_FLAGS} \
+  --clearml \
+  --clearml-project mmdetection \
+  --work-dir "$RUN_OUTPUT_DIR" \
   --out "$OUT"
 
 # --- Run log ---
@@ -34,7 +42,7 @@ mkdir -p .notes/py
   printf -- '- RUN_OUTPUT_DIR: %s\n' "${RUN_OUTPUT_DIR:-}"
   printf -- '- Command:\n'
   printf '  python tools/test.py "%s" "%s" \\\n' "$CONFIG" "$WEIGHTS"
-  if [[ -n "$CLEARML_FLAGS" ]]; then printf '    %s \\\n' "$CLEARML_FLAGS"; fi
+  printf '    --clearml --clearml-project mmdetection \\\n'
   printf '    --out "%s"\n' "$OUT"
   printf '\n'
 } >> "$LOG_FILE"
