@@ -73,6 +73,31 @@ def parse_args():
 
 
 def main():
+    # Allowlist classes for PyTorch 2.6+ safe loading (weights_only=True)
+    # to avoid UnpicklingError when checkpoints include mmengine objects.
+    try:
+        import torch
+        ts = torch.serialization  # type: ignore[attr-defined]
+        allow = []
+        try:
+            from mmengine.logging.history_buffer import HistoryBuffer  # type: ignore
+            allow.append(HistoryBuffer)
+        except Exception:
+            pass
+        # MessageHub module path differs between versions
+        try:
+            from mmengine.logging.message_hub import MessageHub  # type: ignore
+            allow.append(MessageHub)
+        except Exception:
+            try:
+                from mmengine.logging.messagehub import MessageHub  # type: ignore
+                allow.append(MessageHub)
+            except Exception:
+                pass
+        if hasattr(ts, 'add_safe_globals') and allow:
+            ts.add_safe_globals(allow)  # type: ignore[attr-defined]
+    except Exception as e:
+        print(f'[TorchSafeGlobals] Skipped registering safe globals: {e}')
     args = parse_args()
 
     # Reduce the number of repeated compilations and improve
