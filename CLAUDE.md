@@ -303,6 +303,61 @@ PRレビューを受けた際は、以下の手順で対応すること：
    - **データ拡張**: ファインチューニング時のデータ拡張強度は、データセットサイズと学習目的により調整
    - **設定の継承**: ベース設定からの継承とオーバーライドの仕組みを理解した上で判断
 
+### 大量のレビューコメントへの対応方法
+
+コメントが多い場合は、一旦ファイルに書き出してから対応することを推奨：
+
+1. **コメントの全取得と整理**
+   ```bash
+   # .notes ディレクトリを作成（未作成の場合）
+   mkdir -p .notes
+   
+   # 全コメントをJSONで取得して保存
+   gh api repos/<owner>/<repo>/pulls/<PR番号>/comments --paginate --jq '.[] | {
+     id: .id,
+     path: .path,
+     line: .line,
+     body: (.body | split("\n")[0:3] | join(" ")),
+     created_at: .created_at,
+     user: .user.login,
+     in_reply_to: .in_reply_to_id
+   }' | jq -s 'sort_by(.created_at)' > .notes/pr_comments.json
+   ```
+
+2. **未対応コメントのMarkdown化**
+   ```bash
+   # .notes/pending_pr_comments.md に未対応リストを作成
+   cat > .notes/pending_pr_comments.md << 'EOF'
+   # PR #<番号> 未対応コメント一覧
+   
+   ## 1. <ファイル名> - <概要>
+   - **ID**: <コメントID>
+   - **ファイル**: <ファイルパス>
+   - **行**: <行番号>
+   - **内容**: <コメント概要>
+   - **詳細**: <対応が必要な内容>
+   
+   ## 対応状況
+   - [ ] 1. <項目1>
+   - [ ] 2. <項目2>
+   EOF
+   ```
+
+3. **TodoWriteツールとの連携**
+   - 各コメント対応をTodoWriteツールで管理
+   - 対応完了したらチェックマークを付けて追跡
+
+4. **対応後のクリーンアップ**
+   ```bash
+   # 対応完了後は.notesディレクトリの作業ファイルを削除
+   rm -f .notes/pr_comments.json .notes/pending_pr_comments.md
+   ```
+
+この方法により：
+- 大量のコメントを見落とさない
+- 対応状況を明確に管理できる
+- チーム内で進捗を共有しやすい
+
 ## PRレビュー対応の実例
 
 ### ラインコメント対応例（PR #2より）

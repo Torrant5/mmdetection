@@ -134,5 +134,8 @@ output/
 # Claude-specific files
 .claude/
 
+# Working notes for PR reviews and development
+.notes/
+
 # Local mmcv copy
 mmcv/
