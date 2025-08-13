@@ -18,7 +18,7 @@ model = dict(
     test_cfg=dict(score_thr=0.01, nms=dict(type='nms', iou_threshold=0.65))
 )
 
-classes = ('person','sports ball')
+classes = ('person', 'sports ball')
 
 img_scale = (3040, 3040)  # High resolution for small object detection
 
@@ -108,7 +108,7 @@ train_cfg = dict(
 )
 
 # Very conservative learning rate for fine-tuning
-base_lr = 0.00001  # 1/1000 of default YOLOX learning rate
+base_lr = 0.00001  # Conservative LR for fine-tuning: 1/1000 of default (0.01)
 
 # Simple optimizer without complex weight decay settings
 optim_wrapper = dict(

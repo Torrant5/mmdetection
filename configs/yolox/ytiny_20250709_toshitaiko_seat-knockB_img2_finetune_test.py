@@ -14,7 +14,7 @@ model = dict(
     test_cfg=dict(score_thr=0.01, nms=dict(type='nms', iou_threshold=0.65))
 )
 
-classes = ('person','sports ball')
+classes = ('person', 'sports ball')
 
 img_scale = (3040, 3040)  # High resolution for small object detection
 

@@ -22,10 +22,7 @@ def transfer_weights(src_checkpoint_path, dst_checkpoint_path):
     print(f"Loading checkpoint from {src_checkpoint_path}")
     checkpoint = torch.load(src_checkpoint_path, map_location='cpu')
     
-    if 'state_dict' in checkpoint:
-        state_dict = checkpoint['state_dict']
-    else:
-        state_dict = checkpoint
+    state_dict = checkpoint['state_dict'] if 'state_dict' in checkpoint else checkpoint
     
     # Create new state dict
     new_state_dict = {}
@@ -87,8 +84,8 @@ def transfer_weights(src_checkpoint_path, dst_checkpoint_path):
     
     # Print summary
     print("\n=== Transfer Summary ===")
-    print(f"Source: 80-class COCO model")
-    print(f"Target: 2-class model (person, sports ball)")
+    print("Source: 80-class COCO model")
+    print("Target: 2-class model (person, sports ball)")
     print(f"Transferred class indices: {src_indices} -> {dst_indices}")
     print(f"Output saved to: {dst_checkpoint_path}")
     
