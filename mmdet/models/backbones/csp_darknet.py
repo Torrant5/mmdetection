@@ -115,7 +115,10 @@ class SPPBottleneck(BaseModule):
 
     def forward(self, x):
         x = self.conv1(x)
-        with torch.cuda.amp.autocast(enabled=False):
+        # Avoid deprecated torch.cuda.amp.autocast; explicitly select device type
+        _dev = 'cuda' if torch.cuda.is_available() else (
+            'mps' if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available() else 'cpu')
+        with torch.amp.autocast(device_type=_dev, enabled=False):
             x = torch.cat(
                 [x] + [pooling(x) for pooling in self.poolings], dim=1)
         x = self.conv2(x)

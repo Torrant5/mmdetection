@@ -124,3 +124,18 @@ work_dirs/
 
 # Local checkpoints folder (ignored)
 /weights/
+
+# Training outputs
+output/
+
+# Backup files
+*.backup_*
+
+# Claude-specific files
+.claude/
+
+# Working notes for PR reviews and development
+.notes/
+
+# Local mmcv copy
+mmcv/

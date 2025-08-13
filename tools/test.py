@@ -57,6 +57,21 @@ def parse_args():
     # will pass the `--local-rank` parameter to `tools/train.py` instead
     # of `--local_rank`.
     parser.add_argument('--local_rank', '--local-rank', type=int, default=0)
+    # ClearML optional logging
+    parser.add_argument(
+        '--clearml',
+        action='store_true',
+        help='Enable ClearML logging (Task.init) if clearml is installed')
+    parser.add_argument(
+        '--clearml-project',
+        type=str,
+        default='mmdetection',
+        help='ClearML project name when --clearml is enabled')
+    parser.add_argument(
+        '--clearml-task',
+        type=str,
+        default=None,
+        help='ClearML task name when --clearml is enabled (default: config basename + "-test")')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -64,6 +79,68 @@ def parse_args():
 
 
 def main():
+    # Allowlist classes for PyTorch 2.6+ safe loading (weights_only=True)
+    # to avoid UnpicklingError when checkpoints include mmengine objects.
+    try:
+        import torch
+        ts = torch.serialization  # type: ignore[attr-defined]
+        allow = []
+        # mmengine objects possibly stored in checkpoints
+        try:
+            from mmengine.logging.history_buffer import HistoryBuffer  # type: ignore
+            allow.append(HistoryBuffer)
+        except Exception:
+            pass
+        try:
+            # MessageHub module path differs between versions
+            from mmengine.logging.message_hub import MessageHub  # type: ignore
+            allow.append(MessageHub)
+        except Exception:
+            try:
+                from mmengine.logging.messagehub import MessageHub  # type: ignore
+                allow.append(MessageHub)
+            except Exception:
+                pass
+        # NumPy reconstruct helpers sometimes appear in pickled state
+        try:
+            import numpy as np  # noqa: F401
+            from numpy.core.multiarray import _reconstruct as np_reconstruct  # type: ignore
+            # types can also be allowlisted
+            from numpy import ndarray as np_ndarray  # type: ignore
+            from numpy import dtype as np_dtype  # type: ignore
+            allow.extend([np_reconstruct, np_ndarray, np_dtype])
+            
+            # Add numpy scalar support (needed for some checkpoints)
+            try:
+                from numpy._core.multiarray import scalar as np_scalar  # type: ignore
+                allow.append(np_scalar)
+            except ImportError:
+                try:
+                    from numpy.core.multiarray import scalar as np_scalar  # type: ignore
+                    allow.append(np_scalar)
+                except ImportError:
+                    pass
+            
+            try:
+                from numpy.dtypes import Float64DType as np_Float64DType  # type: ignore
+                from numpy.dtypes import Int64DType as np_Int64DType  # type: ignore
+                allow.extend([np_Float64DType, np_Int64DType])
+            except Exception:
+                pass
+        except Exception:
+            pass
+        # Add built-in functions that are commonly used in checkpoints
+        import builtins
+        allow.extend([
+            getattr,  # Required for loading some checkpoint formats
+            setattr,  # May be needed for some models
+            builtins.getattr,  # Explicit reference
+            builtins.setattr,  # Explicit reference
+        ])
+        if hasattr(ts, 'add_safe_globals') and allow:
+            ts.add_safe_globals(allow)  # type: ignore[attr-defined]
+    except Exception as e:
+        print(f'[TorchSafeGlobals] Skipped registering safe globals: {e}')
     args = parse_args()
 
     # Reduce the number of repeated compilations and improve
@@ -76,13 +153,58 @@ def main():
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
 
+    # Initialize ClearML task if requested
+    if getattr(args, 'clearml', False):
+        try:
+            from clearml import Task  # type: ignore
+            cfg_base = osp.splitext(osp.basename(args.config))[0]
+            # Compose task name with dataset/model/tag if available
+            _dataset = os.environ.get('DATASET')
+            _model = os.environ.get('MODEL')
+            _tag = os.environ.get('TAG')
+            default_name = f"test:{cfg_base}"
+            parts = []
+            if _dataset:
+                parts.append(_dataset)
+            if _model:
+                parts.append(_model)
+            if _tag:
+                parts.append(_tag)
+            if parts:
+                default_name = default_name + " [" + "/".join(parts) + "]"
+            task_name = args.clearml_task or default_name
+
+            task = Task.init(project_name=args.clearml_project, task_name=task_name, auto_connect_frameworks=True)
+            try:
+                from mmengine import Config as _Cfg
+                cfg_dict = cfg.to_dict() if isinstance(cfg, _Cfg) or hasattr(cfg, 'to_dict') else dict(cfg)
+            except Exception:
+                cfg_dict = dict()
+            try:
+                task.connect(cfg_dict)
+            except Exception:
+                pass
+            # Add helpful tags for filtering in ClearML
+            try:
+                tags = []
+                for key in ('STAGE', 'DATASET', 'MODEL', 'TAG', 'CONFIG_BASE', 'DEVICE'):
+                    v = os.environ.get(key)
+                    if v:
+                        tags.append(f"{key.lower()}:{v}")
+                if tags:
+                    task.add_tags(tags)
+            except Exception:
+                pass
+        except Exception as e:
+            print(f'[ClearML] Skipped initializing ClearML Task: {e}')
+
     # work_dir is determined in this priority: CLI > segment in file > filename
     if args.work_dir is not None:
         # update configs according to CLI args if args.work_dir is not None
         cfg.work_dir = args.work_dir
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
-        cfg.work_dir = osp.join('./work_dirs',
+        cfg.work_dir = osp.join('./output',
                                 osp.splitext(osp.basename(args.config))[0])
 
     cfg.load_from = args.checkpoint
